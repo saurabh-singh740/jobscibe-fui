@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
+// 🔥 Backend base URL (Vercel / Local both)
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://jobscibe.onrender.com";
+
+// 🔥 VERY IMPORTANT: cookies allow
+axios.defaults.withCredentials = true;
+
 const JobSearch = () => {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("remote");
@@ -9,6 +15,7 @@ const JobSearch = () => {
   const [jobError, setJobError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // UI purpose only (real auth cookie-based hai)
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -16,20 +23,29 @@ const JobSearch = () => {
   }, [token]);
 
   const fetchExternalJobs = async (searchQuery, searchLocation) => {
-    if (!searchQuery) return;
+    if (!searchQuery.trim()) return;
 
     try {
       setLoading(true);
       setJobError("");
+
       const res = await axios.get(
-        `/api/jobs/external?query=${encodeURIComponent(searchQuery)}&location=${encodeURIComponent(searchLocation)}`,
-        // { headers: { Authorization: `Bearer ${token}` } }
+        `${API_BASE_URL}/api/jobs/external`,
+        {
+          params: {
+            query: searchQuery,
+            location: searchLocation,
+          },
+          withCredentials: true, // 🔥 COOKIE SENT
+        }
       );
-      console.log(res.data)
-      setExternalJobs(res.data.data || []);
+
+      setExternalJobs(res.data?.data || []);
     } catch (err) {
-      console.error(err.response || err);
-      setJobError("Failed to fetch jobs. Try again.");
+      console.error("Error fetching jobs:", err.response || err);
+      setJobError(
+        err.response?.data?.message || "Failed to fetch jobs. Try again."
+      );
       setExternalJobs([]);
     } finally {
       setLoading(false);
@@ -48,10 +64,15 @@ const JobSearch = () => {
       </h2>
 
       {!isAuthenticated ? (
-        <p className="text-center text-red-500 mb-6">Login/Register to access jobs features.</p>
+        <p className="text-center text-red-500 mb-6">
+          Login/Register to access jobs features.
+        </p>
       ) : (
         <>
-          <form onSubmit={handleSearch} className="max-w-3xl mx-auto mb-8 flex flex-col md:flex-row gap-4">
+          <form
+            onSubmit={handleSearch}
+            className="max-w-3xl mx-auto mb-8 flex flex-col md:flex-row gap-4"
+          >
             <input
               type="text"
               value={query}
@@ -59,6 +80,7 @@ const JobSearch = () => {
               placeholder="Job title or keywords..."
               className="flex-1 p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+
             <input
               type="text"
               value={location}
@@ -66,7 +88,11 @@ const JobSearch = () => {
               placeholder="Location (default: remote)"
               className="flex-1 p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <button type="submit" className="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-indigo-500">
+
+            <button
+              type="submit"
+              className="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-indigo-500"
+            >
               {loading ? "Searching..." : "Search"}
             </button>
           </form>
@@ -75,13 +101,25 @@ const JobSearch = () => {
 
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
             {externalJobs.map((job, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-lg shadow-md flex flex-col" style={{ maxHeight: "300px" }}>
-                <h4 className="font-semibold text-indigo-700 mb-2">{job.title}</h4>
-                <p className="text-gray-700 text-sm mb-1"><strong>Company:</strong> {job.company}</p>
-                <p className="text-gray-700 text-sm mb-1"><strong>Location:</strong> {job.location || location}</p>
-                <div className="text-gray-600 text-sm overflow-y-auto flex-1">{job.description}</div>
+              <div
+                key={idx}
+                className="bg-white p-4 rounded-lg shadow-md flex flex-col"
+                style={{ maxHeight: "300px" }}
+              >
+                <h4 className="font-semibold text-indigo-700 mb-2">
+                  {job.title}
+                </h4>
+                <p className="text-gray-700 text-sm mb-1">
+                  <strong>Company:</strong> {job.company}
+                </p>
+                <p className="text-gray-700 text-sm mb-1">
+                  <strong>Location:</strong> {job.location || location}
+                </p>
+                <div className="text-gray-600 text-sm overflow-y-auto flex-1">
+                  {job.description}
+                </div>
                 <a
-                  href={`https://jooble.org/jobs/${encodeURIComponent(job.title)}?l=${encodeURIComponent(location)}`}
+                  href={job.link}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-2 text-indigo-600 hover:underline text-sm"
