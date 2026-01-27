@@ -31,7 +31,7 @@ const ResumeUpload = ({ setResumeId, setParsedSkills, setParsedText }) => {
       setError("");
 
       const response = await axios.post(
-        "https://jobscibe.onrender.com/api/resume/upload",
+        "http://localhost:3000/api/resume/upload",
         formData,
         { headers: { "Content-Type": "multipart/form-data" }, withCredentials: true }
       );
